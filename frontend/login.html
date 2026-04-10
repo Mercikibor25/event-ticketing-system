@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - EventBook Kenya</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li id="nav-auth" style="display:flex; gap:0.5rem;">
+            <a href="login.html">Login</a>
+            <a href="register.html" class="btn-nav">Register</a>
+        </li>
+        <li id="nav-user" style="display:none; gap:0.5rem; align-items:center;">
+            <a href="my-tickets.html" id="nav-username">Account</a>
+            <a href="#" onclick="logout()" class="btn-nav">Logout</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- LOGIN FORM -->
+<div class="container">
+    <div class="form-card">
+        <h2 class="form-title">Welcome Back</h2>
+
+        <div id="alert-container"></div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Enter your username">
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter your password">
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="loginUser()">
+            Login
+        </button>
+
+        <div class="form-footer">
+            Don't have an account? <a href="register.html">Register here</a>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNav();
+        // Redirect if already logged in
+        if (isLoggedIn()) {
+            window.location.href = 'index.html';
+        }
+    });
+
+    async function loginUser() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            showAlert('alert-container', 'Please enter username and password.', 'error');
+            return;
+        }
+
+        // Disable button
+        const btn = document.querySelector('.btn-primary');
+        btn.textContent = 'Logging in...';
+        btn.disabled = true;
+
+        try {
+            const response = await api.login({ username, password });
+            const data = await response.json();
+
+            if (response.ok) {
+                // Save tokens
+                localStorage.setItem('access_token', data.access);
+                localStorage.setItem('refresh_token', data.refresh);
+
+                // Get and save user profile
+                const profileRes = await api.getProfile();
+                const profile = await profileRes.json();
+                localStorage.setItem('user', JSON.stringify(profile));
+
+                showAlert('alert-container', 'Login successful! Redirecting...', 'success');
+
+                // Redirect admin to admin page, others to home
+                setTimeout(() => {
+                    if (profile.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }, 1500);
+
+            } else {
+                showAlert('alert-container', 'Invalid username or password.', 'error');
+                btn.textContent = 'Login';
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            showAlert('alert-container', 'Could not connect to server. Is it running?', 'error');
+            btn.textContent = 'Login';
+            btn.disabled = false;
+        }
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') loginUser();
+    });
+</script>
+
+</body>
+</html>

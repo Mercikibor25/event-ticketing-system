@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Details - EventBook Kenya</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="my-tickets.html">My Tickets</a></li>
+        <li id="nav-auth" style="display:flex; gap:0.5rem;">
+            <a href="login.html">Login</a>
+            <a href="register.html" class="btn-nav">Register</a>
+        </li>
+        <li id="nav-user" style="display:none; gap:0.5rem; align-items:center;">
+            <a href="my-tickets.html" id="nav-username">Account</a>
+            <a href="admin.html" id="nav-admin" style="display:none;">Admin</a>
+            <a href="#" onclick="logout()" class="btn-nav">Logout</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- EVENT DETAIL -->
+<div class="container">
+    <div id="alert-container"></div>
+    <div id="event-container">
+        <div class="loading">Loading event...</div>
+    </div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div id="payment-modal" style="display:none; position:fixed; top:0; left:0; width:100%;
+     height:100%; background:rgba(0,0,0,0.5); z-index:200; 
+     justify-content:center; align-items:center;">
+    <div style="background:white; border-radius:12px; padding:2rem; 
+                width:90%; max-width:400px;">
+        <h3 style="margin-bottom:1rem;">Complete Payment</h3>
+        <div id="modal-alert"></div>
+        <p style="color:var(--text-light); margin-bottom:1rem; font-size:0.9rem;">
+            Enter your M-Pesa number to receive the payment prompt
+        </p>
+        <div class="form-group">
+            <label>M-Pesa Phone Number</label>
+            <input type="text" id="mpesa-phone" placeholder="e.g. 0712345678">
+        </div>
+        <p id="modal-amount" style="font-weight:700; color:var(--primary); 
+           margin-bottom:1rem;"></p>
+        <div style="display:flex; gap:1rem;">
+            <button class="btn btn-primary" style="flex:1" onclick="submitPayment()">
+                Pay Now
+            </button>
+            <button class="btn btn-outline" style="flex:1" onclick="closeModal()">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    let currentTicketId = null;
+    let currentEventPrice = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNav();
+        showAdminLink();
+        loadEvent();
+    });
+
+    function showAdminLink() {
+        const user = getUser();
+        const adminLink = document.getElementById('nav-admin');
+        if (adminLink && user.role === 'admin') {
+            adminLink.style.display = 'inline-block';
+        }
+    }
+
+    // Get event ID from URL
+    function getEventId() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id');
+    }
+
+    async function loadEvent() {
+        const eventId = getEventId();
+        const container = document.getElementById('event-container');
+
+        if (!eventId) {
+            container.innerHTML = `<div class="empty-state"><h3>Event not found</h3></div>`;
+            return;
+        }
+
+        try {
+            const response = await api.getEvent(eventId);
+            const event = await response.json();
+
+            container.innerHTML = `
+                <div style="margin-bottom:1rem;">
+                    <a href="index.html" style="color:var(--primary); 
+                       text-decoration:none;">← Back to Events</a>
+                </div>
+
+                <div class="card" style="max-width:700px; margin:0 auto;">
+                    <div class="card-body">
+
+                        <div style="display:flex; justify-content:space-between; 
+                                    align-items:start; margin-bottom:1rem;">
+                            <h2 style="font-size:1.6rem;">${event.title}</h2>
+                            <span class="badge badge-${event.status}">${event.status}</span>
+                        </div>
+
+                        <p style="color:var(--text-light); margin-bottom:1.5rem; 
+                                  line-height:1.6;">
+                            ${event.description}
+                        </p>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; 
+                                    gap:1rem; margin-bottom:1.5rem;">
+                            <div style="background:var(--secondary); padding:1rem; 
+                                        border-radius:8px;">
+                                <p style="font-size:0.8rem; color:var(--text-light);">
+                                    DATE & TIME
+                                </p>
+                                <p style="font-weight:600; margin-top:0.3rem;">
+                                    📅 ${formatDate(event.date)}
+                                </p>
+                            </div>
+                            <div style="background:var(--secondary); padding:1rem; 
+                                        border-radius:8px;">
+                                <p style="font-size:0.8rem; color:var(--text-light);">
+                                    VENUE
+                                </p>
+                                <p style="font-weight:600; margin-top:0.3rem;">
+                                    📍 ${event.venue}
+                                </p>
+                            </div>
+                            <div style="background:var(--secondary); padding:1rem; 
+                                        border-radius:8px;">
+                                <p style="font-size:0.8rem; color:var(--text-light);">
+                                    TICKET PRICE
+                                </p>
+                                <p style="font-weight:600; margin-top:0.3rem; 
+                                          color:var(--primary);">
+                                    💰 KES ${event.ticket_price}
+                                </p>
+                            </div>
+                            <div style="background:var(--secondary); padding:1rem; 
+                                        border-radius:8px;">
+                                <p style="font-size:0.8rem; color:var(--text-light);">
+                                    AVAILABLE TICKETS
+                                </p>
+                                <p style="font-weight:600; margin-top:0.3rem;">
+                                    🎟 ${event.available_tickets} left
+                                </p>
+                            </div>
+                        </div>
+
+                        <p style="font-size:0.85rem; color:var(--text-light); 
+                                  margin-bottom:1.5rem;">
+                            Organised by <strong>${event.organizer_name}</strong>
+                        </p>
+
+                        ${getBookingButton(event)}
+                    </div>
+                </div>
+            `;
+
+            currentEventPrice = event.ticket_price;
+
+        } catch (error) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Could not load event</h3>
+                    <p>Make sure the server is running</p>
+                </div>`;
+        }
+    }
+
+    function getBookingButton(event) {
+        if (event.is_sold_out) {
+            return `<button class="btn btn-danger btn-full" disabled>Sold Out</button>`;
+        }
+        if (!isLoggedIn()) {
+            return `<a href="login.html" class="btn btn-primary btn-full">
+                        Login to Book Ticket
+                    </a>`;
+        }
+        return `<button class="btn btn-success btn-full" onclick="bookTicket(${event.id})">
+                    🎟 Book Ticket — KES ${event.ticket_price}
+                </button>`;
+    }
+
+    async function bookTicket(eventId) {
+        const btn = document.querySelector('.btn-success');
+        btn.textContent = 'Booking...';
+        btn.disabled = true;
+
+        try {
+            const response = await api.bookTicket(eventId);
+            const data = await response.json();
+
+            if (response.ok) {
+                currentTicketId = data.ticket.id;
+                showAlert('alert-container', 'Ticket booked! Complete payment below.', 'success');
+                openModal();
+                btn.textContent = '✓ Ticket Booked — Pay Now';
+            } else {
+                const error = data.error || 'Could not book ticket.';
+                showAlert('alert-container', error, 'error');
+                btn.textContent = `🎟 Book Ticket — KES ${currentEventPrice}`;
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            showAlert('alert-container', 'Server error. Try again.', 'error');
+            btn.textContent = `🎟 Book Ticket — KES ${currentEventPrice}`;
+            btn.disabled = false;
+        }
+    }
+
+    function openModal() {
+        document.getElementById('modal-amount').textContent =
+            `Amount to pay: KES ${currentEventPrice}`;
+        document.getElementById('payment-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('payment-modal').style.display = 'none';
+    }
+
+    async function submitPayment() {
+        const phone = document.getElementById('mpesa-phone').value.trim();
+
+        if (!phone) {
+            showAlert('modal-alert', 'Please enter your M-Pesa number.', 'error');
+            return;
+        }
+
+        const btn = document.querySelector('#payment-modal .btn-primary');
+        btn.textContent = 'Processing...';
+        btn.disabled = true;
+
+        try {
+            const response = await api.initiatePayment({
+                ticket_id: currentTicketId,
+                phone_number: phone
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                closeModal();
+                showAlert('alert-container',
+                    'M-Pesa prompt sent! Check your phone and enter your PIN.', 'success');
+            } else {
+                showAlert('modal-alert', data.error || 'Payment failed. Try again.', 'error');
+                btn.textContent = 'Pay Now';
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            showAlert('modal-alert', 'Server error. Try again.', 'error');
+            btn.textContent = 'Pay Now';
+            btn.disabled = false;
+        }
+    }
+
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-KE', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+</script>
+
+</body>
+</html>

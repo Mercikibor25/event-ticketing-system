@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - EventBook Kenya</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li id="nav-auth" style="display:flex; gap:0.5rem;">
+            <a href="login.html">Login</a>
+            <a href="register.html" class="btn-nav">Register</a>
+        </li>
+        <li id="nav-user" style="display:none; gap:0.5rem; align-items:center;">
+            <a href="my-tickets.html" id="nav-username">Account</a>
+            <a href="#" onclick="logout()" class="btn-nav">Logout</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- REGISTER FORM -->
+<div class="container">
+    <div class="form-card">
+        <h2 class="form-title">Create Account</h2>
+
+        <div id="alert-container"></div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Enter username">
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="email" placeholder="Enter email">
+        </div>
+
+        <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" id="phone" placeholder="e.g. 0712345678">
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+
+        <div class="form-group">
+            <label>Confirm Password</label>
+            <input type="password" id="password2" placeholder="Confirm password">
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="registerUser()">
+            Create Account
+        </button>
+
+        <div class="form-footer">
+            Already have an account? <a href="login.html">Login here</a>
+        </div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNav();
+        // Redirect if already logged in
+        if (isLoggedIn()) {
+            window.location.href = 'index.html';
+        }
+    });
+
+    async function registerUser() {
+        const username  = document.getElementById('username').value.trim();
+        const email     = document.getElementById('email').value.trim();
+        const phone     = document.getElementById('phone').value.trim();
+        const password  = document.getElementById('password').value;
+        const password2 = document.getElementById('password2').value;
+
+        // Basic validation
+        if (!username || !email || !phone || !password || !password2) {
+            showAlert('alert-container', 'Please fill in all fields.', 'error');
+            return;
+        }
+
+        if (password !== password2) {
+            showAlert('alert-container', 'Passwords do not match.', 'error');
+            return;
+        }
+
+        // Disable button
+        const btn = document.querySelector('.btn-primary');
+        btn.textContent = 'Creating account...';
+        btn.disabled = true;
+
+        try {
+            const response = await api.register({
+                username,
+                email,
+                phone_number: phone,
+                password,
+                password2
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('alert-container', 'Account created! Redirecting to login...', 'success');
+                setTimeout(() => window.location.href = 'login.html', 2000);
+            } else {
+                // Show first error from backend
+                const firstError = Object.values(data)[0];
+                showAlert('alert-container', Array.isArray(firstError) ? firstError[0] : firstError, 'error');
+                btn.textContent = 'Create Account';
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            showAlert('alert-container', 'Could not connect to server. Is it running?', 'error');
+            btn.textContent = 'Create Account';
+            btn.disabled = false;
+        }
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') registerUser();
+    });
+</script>
+
+</body>
+</html>

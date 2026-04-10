@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - EventBook Kenya</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li id="nav-auth" style="display:flex; gap:0.5rem;">
+            <a href="login.html">Login</a>
+            <a href="register.html" class="btn-nav">Register</a>
+        </li>
+        <li id="nav-user" style="display:none; gap:0.5rem; align-items:center;">
+            <a href="my-tickets.html" id="nav-username">Account</a>
+            <a href="admin.html">Admin</a>
+            <a href="#" onclick="logout()" class="btn-nav">Logout</a>
+        </li>
+    </ul>
+</nav>
+
+<div class="container">
+    <div class="page-header">
+        <h2>Admin Dashboard</h2>
+        <p>Manage events, tickets and notifications</p>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <!-- STATS ROW -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+                gap:1rem; margin-bottom:2rem;">
+        <div style="background:white; padding:1.5rem; border-radius:10px;
+                    box-shadow:var(--shadow); border-left:4px solid var(--primary);">
+            <p style="color:var(--text-light); font-size:0.85rem;">Total Events</p>
+            <h3 id="stat-events" style="font-size:2rem; color:var(--primary);">...</h3>
+        </div>
+        <div style="background:white; padding:1.5rem; border-radius:10px;
+                    box-shadow:var(--shadow); border-left:4px solid var(--accent);">
+            <p style="color:var(--text-light); font-size:0.85rem;">Total Tickets Sold</p>
+            <h3 id="stat-tickets" style="font-size:2rem; color:var(--accent);">...</h3>
+        </div>
+    </div>
+
+    <!-- TWO COLUMN LAYOUT -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+
+        <!-- CREATE EVENT FORM -->
+        <div style="background:white; padding:2rem; border-radius:10px;
+                    box-shadow:var(--shadow);">
+            <h3 style="margin-bottom:1.5rem; font-size:1.2rem;">Create New Event</h3>
+            <div id="event-form-alert"></div>
+
+            <div class="form-group">
+                <label>Event Title</label>
+                <input type="text" id="ev-title" placeholder="e.g. Nairobi Jazz Night">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="ev-desc" rows="3"
+                    placeholder="Describe the event..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Venue</label>
+                <input type="text" id="ev-venue" placeholder="e.g. KICC, Nairobi">
+            </div>
+            <div class="form-group">
+                <label>Date & Time</label>
+                <input type="datetime-local" id="ev-date">
+            </div>
+            <div class="form-group">
+                <label>Ticket Price (KES)</label>
+                <input type="number" id="ev-price" placeholder="e.g. 500">
+            </div>
+            <div class="form-group">
+                <label>Total Capacity</label>
+                <input type="number" id="ev-capacity" placeholder="e.g. 200">
+            </div>
+            <button id="create-event-btn" class="btn btn-primary btn-full" onclick="submitCreateEvent()">
+                 Create Event
+            </button>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div style="display:flex; flex-direction:column; gap:2rem;">
+
+            <!-- SEND EVENT UPDATE -->
+            <div style="background:white; padding:2rem; border-radius:10px;
+                        box-shadow:var(--shadow);">
+                <h3 style="margin-bottom:1.5rem; font-size:1.2rem;">
+                    Send SMS Update to Attendees
+                </h3>
+                <div id="sms-alert"></div>
+                <div class="form-group">
+                    <label>Select Event</label>
+                    <select id="sms-event">
+                        <option value="">Loading events...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="sms-message" rows="3"
+                        placeholder="e.g. Venue has changed to..."></textarea>
+                </div>
+                <button class="btn btn-success btn-full" onclick="sendSmsUpdate()">
+                    Send SMS to All Attendees
+                </button>
+            </div>
+
+            <!-- VALIDATE TICKET -->
+            <div style="background:white; padding:2rem; border-radius:10px;
+                        box-shadow:var(--shadow);">
+                <h3 style="margin-bottom:1.5rem; font-size:1.2rem;">
+                    Validate Ticket at Entry
+                </h3>
+                <div id="validate-alert"></div>
+                <div class="form-group">
+                    <label>Ticket ID</label>
+                    <input type="text" id="validate-ticket-id"
+                        placeholder="Paste ticket UUID here">
+                </div>
+                <button class="btn btn-outline btn-full" onclick="validateTicket()">
+                    Validate Ticket
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- EVENTS LIST -->
+    <div style="background:white; padding:2rem; border-radius:10px;
+                box-shadow:var(--shadow); margin-top:2rem;">
+        <h3 style="margin-bottom:1.5rem; font-size:1.2rem;">All Events</h3>
+        <div id="admin-events-list">
+            <div class="loading">Loading events...</div>
+        </div>
+    </div>
+
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNav();
+
+        // Redirect if not logged in or not admin
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+            return;
+        }
+        const user = getUser();
+        if (user.role !== 'admin') {
+            window.location.href = 'index.html';
+            return;
+        }
+
+        loadDashboard();
+    });
+
+    async function loadDashboard() {
+        await loadEvents();
+    }
+
+    async function loadEvents() {
+        try {
+            const response = await api.getEvents();
+            const events = await response.json();
+
+            // Update stats
+            document.getElementById('stat-events').textContent = events.length;
+
+            const totalSold = events.reduce((sum, e) =>
+                sum + (e.total_capacity - e.available_tickets), 0);
+            document.getElementById('stat-tickets').textContent = totalSold;
+
+            // Populate SMS dropdown
+            const select = document.getElementById('sms-event');
+            select.innerHTML = events.map(e =>
+                `<option value="${e.id}">${e.title}</option>`
+            ).join('');
+
+            // Populate events table
+            const list = document.getElementById('admin-events-list');
+            if (events.length === 0) {
+                list.innerHTML = `<p style="color:var(--text-light);">
+                    No events yet. Create one above.</p>`;
+                return;
+            }
+
+            list.innerHTML = `
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--border);
+                                   text-align:left;">
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">TITLE</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">DATE</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">VENUE</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">PRICE</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">TICKETS LEFT</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${events.map(e => `
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:0.8rem; font-weight:500;">
+                                    ${e.title}</td>
+                                <td style="padding:0.8rem; font-size:0.85rem;
+                                           color:var(--text-light);">
+                                    ${formatDate(e.date)}</td>
+                                <td style="padding:0.8rem; font-size:0.85rem;
+                                           color:var(--text-light);">
+                                    ${e.venue}</td>
+                                <td style="padding:0.8rem; font-weight:600;
+                                           color:var(--primary);">
+                                    KES ${e.ticket_price}</td>
+                                <td style="padding:0.8rem;">
+                                    ${e.available_tickets}</td>
+                                <td style="padding:0.8rem;">
+                                    <span class="badge badge-${e.status}">
+                                        ${e.status}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>`;
+
+        } catch (error) {
+            showAlert('alert-container', 'Could not load events.', 'error');
+        }
+    }
+
+    async function submitCreateEvent() {
+        const title    = document.getElementById('ev-title').value.trim();
+        const desc     = document.getElementById('ev-desc').value.trim();
+        const venue    = document.getElementById('ev-venue').value.trim();
+        const date     = document.getElementById('ev-date').value;
+        const price    = document.getElementById('ev-price').value;
+        const capacity = document.getElementById('ev-capacity').value;
+
+        if (!title || !desc || !venue || !date || !price || !capacity) {
+            showAlert('event-form-alert', 'Please fill in all fields.', 'error');
+            return;
+        }
+
+        const btn = document.querySelector('.btn-primary');
+        btn.textContent = 'Creating...';
+        btn.disabled = true;
+
+        try {
+            const response = await api.createEvent({
+                title, description: desc, venue,
+                date: new Date(date).toISOString(),
+                ticket_price: price,
+                total_capacity: parseInt(capacity)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('event-form-alert', 'Event created successfully!', 'success');
+                // Clear form
+                ['ev-title','ev-desc','ev-venue','ev-date',
+                 'ev-price','ev-capacity'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                loadDashboard();
+            } else {
+                const error = Object.values(data)[0];
+                showAlert('event-form-alert',
+                    Array.isArray(error) ? error[0] : error, 'error');
+            }
+
+        } catch (error) {
+            showAlert('event-form-alert', 'Server error. Try again.', 'error');
+        }
+
+        btn.textContent = 'Create Event';
+        btn.disabled = false;
+    }
+
+    async function sendSmsUpdate() {
+        const eventId = document.getElementById('sms-event').value;
+        const message = document.getElementById('sms-message').value.trim();
+
+        if (!message) {
+            showAlert('sms-alert', 'Please enter a message.', 'error');
+            return;
+        }
+
+        const btn = document.querySelector('.btn-success');
+        btn.textContent = 'Sending...';
+        btn.disabled = true;
+
+        try {
+            const response = await api.sendEventUpdate({
+                event_id: eventId,
+                message: message
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('sms-alert', data.message, 'success');
+                document.getElementById('sms-message').value = '';
+            } else {
+                showAlert('sms-alert', data.error || 'Failed to send.', 'error');
+            }
+
+        } catch (error) {
+            showAlert('sms-alert', 'Server error. Try again.', 'error');
+        }
+
+        btn.textContent = 'Send SMS to All Attendees';
+        btn.disabled = false;
+    }
+
+    async function validateTicket() {
+        const ticketId = document.getElementById('validate-ticket-id').value.trim();
+
+        if (!ticketId) {
+            showAlert('validate-alert', 'Please enter a ticket ID.', 'error');
+            return;
+        }
+
+        const btn = document.querySelector('.btn-outline');
+        btn.textContent = 'Validating...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/tickets/validate/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({ ticket_id: ticketId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.valid) {
+                showAlert('validate-alert',
+                    `✓ Valid ticket! Attendee: ${data.attendee} — ${data.event}`,
+                    'success');
+                document.getElementById('validate-ticket-id').value = '';
+            } else {
+                showAlert('validate-alert',
+                    data.message || 'Invalid ticket.', 'error');
+            }
+
+        } catch (error) {
+            showAlert('validate-alert', 'Server error. Try again.', 'error');
+        }
+
+        btn.textContent = 'Validate Ticket';
+        btn.disabled = false;
+    }
+
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-KE', {
+            year: 'numeric', month: 'short',
+            day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+    }
+</script>
+
+</body>
+</html>

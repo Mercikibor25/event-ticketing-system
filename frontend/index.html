@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventBook Kenya</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="my-tickets.html">My Tickets</a></li>
+
+        <!-- Shown when NOT logged in -->
+        <li id="nav-auth" style="display:flex; gap:0.5rem;">
+            <a href="login.html">Login</a>
+            <a href="register.html" class="btn-nav">Register</a>
+        </li>
+
+        <!-- Shown when logged in -->
+        <li id="nav-user" style="display:none; gap:0.5rem; align-items:center;">
+            <a href="my-tickets.html" id="nav-username">Account</a>
+            <a href="admin.html" id="nav-admin" style="display:none;">Admin</a>
+            <a href="#" onclick="logout()" class="btn-nav">Logout</a>
+        </li>
+    </ul>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+    <h1>Find & Book Events in Kenya</h1>
+    <p>Secure tickets, real-time M-Pesa payments and instant SMS confirmation</p>
+</div>
+
+<!-- EVENTS SECTION -->
+<div class="container">
+    <div class="page-header">
+        <h2>Upcoming Events</h2>
+        <p>Browse and book tickets for events near you</p>
+    </div>
+
+    <!-- Alert messages -->
+    <div id="alert-container"></div>
+
+    <!-- Events grid -->
+    <div id="events-container" class="cards-grid">
+        <div class="loading">Loading events...</div>
+    </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+    // Run on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNav();
+        showAdminLink();
+        loadEvents();
+    });
+
+    // Show admin link if user is admin
+    function showAdminLink() {
+        const user = getUser();
+        const adminLink = document.getElementById('nav-admin');
+        if (adminLink && user.role === 'admin') {
+            adminLink.style.display = 'inline-block';
+        }
+    }
+
+    // Load and display all events
+    async function loadEvents() {
+        const container = document.getElementById('events-container');
+
+        try {
+            const response = await api.getEvents();
+            const events = await response.json();
+
+            if (events.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No events available</h3>
+                        <p>Check back soon for upcoming events</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = events.map(event => `
+                <div class="card">
+                    <div class="card-body">
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:0.5rem;">
+                            <h3 class="card-title">${event.title}</h3>
+                            <span class="badge badge-${event.status}">
+                                ${event.status}
+                            </span>
+                        </div>
+                        <p class="card-text">📍 ${event.venue}</p>
+                        <p class="card-text">📅 ${formatDate(event.date)}</p>
+                        <p class="card-text">🎟 ${event.available_tickets} tickets left</p>
+                        <p class="card-price">KES ${event.ticket_price}</p>
+                    </div>
+                    <div class="card-footer">
+                        ${event.is_sold_out
+                            ? `<span class="badge badge-sold-out">Sold Out</span>`
+                            : `<a href="event-detail.html?id=${event.id}" class="btn btn-primary">View & Book</a>`
+                        }
+                        <span style="font-size:0.8rem; color:var(--text-light);">
+                            by ${event.organizer_name}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+
+        } catch (error) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Could not load events</h3>
+                    <p>Make sure the server is running</p>
+                </div>`;
+        }
+    }
+
+    // Format date nicely
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-KE', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+</script>
+
+</body>
+</html>
