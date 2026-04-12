@@ -3,8 +3,8 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "startCommand": "python manage.py migrate && python manage.py runserver 0.0.0.0:$PORT",
-        "healthcheckPath": "/api/accounts/",
+        "startCommand": "gunicorn ticketing_system.wsgi:application --bind 0.0.0.0:$PORT",
+        "healthcheckPath": "/api/events/",
         "restartPolicyType": "ON_FAILURE"
     }
 }
