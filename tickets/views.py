@@ -78,7 +78,6 @@ class TicketDetailView(generics.RetrieveAPIView):
         return Ticket.objects.filter(user=self.request.user)
 
 class ValidateTicketView(APIView):
-    """Admin validates a ticket at event entry"""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -101,6 +100,22 @@ class ValidateTicketView(APIView):
         if ticket.status == 'cancelled':
             return Response(
                 {'valid': False, 'message': 'Ticket has been cancelled.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if ticket has been paid for
+        from payments.models import Payment
+        payment = Payment.objects.filter(
+            ticket=ticket,
+            status='completed'
+        ).first()
+
+        if not payment:
+            return Response(
+                {
+                    'valid': False,
+                    'message': 'Ticket has not been paid for. Please pay before entry.'
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 

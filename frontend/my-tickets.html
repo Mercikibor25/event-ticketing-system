@@ -146,26 +146,33 @@
     }
 
     function getPaymentButton(ticket) {
-        if (!ticket.payment) {
-            return `<button class="btn btn-success"
-                        onclick="openPaymentModal(${ticket.id})">
-                        Pay Now
-                    </button>`;
-        }
-        return `<span class="badge badge-ongoing">✓ Paid</span>`;
+    if (ticket.status === 'used') {
+        return `<span class="badge badge-ongoing">✓ Used</span>`;
+    }
+    if (!ticket.payment_status || ticket.payment_status !== 'completed') {
+        return `<button class="btn btn-success"
+                    onclick="openPaymentModal(${ticket.id})">
+                    Pay Now
+                </button>`;
+    }
+    return `<span class="badge badge-ongoing">✓ Paid</span>`;
     }
 
-    // Payment inline (without navigating away)
-    let selectedTicketId = null;
-
-    function openPaymentModal(ticketId) {
-        selectedTicketId = ticketId;
+    async function openPaymentModal(ticketId) {
         const phone = prompt('Enter your M-Pesa phone number (e.g. 0712345678):');
-        if (!phone) return;
-        initiatePayment(ticketId, phone);
-    }
 
-    async function initiatePayment(ticketId, phone) {
+        if (!phone) {
+            showAlert('alert-container', 'Please enter a phone number.', 'error');
+            return;
+        }
+
+        if (phone.length < 10) {
+            showAlert('alert-container', 'Please enter a valid phone number.', 'error');
+            return;
+        }
+
+        showAlert('alert-container', 'Initiating payment...', 'info');
+
         try {
             const response = await api.initiatePayment({
                 ticket_id: ticketId,
@@ -176,7 +183,7 @@
 
             if (response.ok) {
                 showAlert('alert-container',
-                    '✓ M-Pesa prompt sent! Check your phone and enter your PIN.',
+                    'M-Pesa prompt sent! Check your phone and enter your PIN.',
                     'success');
             } else {
                 showAlert('alert-container',
