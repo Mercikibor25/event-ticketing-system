@@ -10,6 +10,8 @@ from .mpesa import stk_push
 from tickets.models import Ticket
 from notifications.utils import send_payment_confirmation
 import json
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 class InitiatePaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -80,8 +82,8 @@ class InitiatePaymentView(APIView):
             )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class MpesaCallbackView(APIView):
-    """Safaricom calls this URL after payment is completed"""
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
