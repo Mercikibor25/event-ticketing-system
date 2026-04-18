@@ -18,6 +18,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', cast=bool)
 ALLOWED_HOSTS = ['*']
+CSRF_TRUSTED_ORIGINS = [
+    'https://event-ticketing-system-production.up.railway.app',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
