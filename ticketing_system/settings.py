@@ -115,9 +115,12 @@ MPESA_PASSKEY = config('MPESA_PASSKEY')
 MPESA_CALLBACK_URL = config('MPESA_CALLBACK_URL')
 MPESA_ENV = config('MPESA_ENV', default='sandbox')
 
-# GAVA SMS Settings
-GAVA_API_KEY = config('GAVA_API_KEY')
-GAVA_SENDER_ID = config('GAVA_SENDER_ID')
+# GAVA Connect KRA API Settings
+GAVA_PIN_CONSUMER_KEY = config('GAVA_PIN_CONSUMER_KEY')
+GAVA_PIN_SECRET_KEY = config('GAVA_PIN_SECRET_KEY')
+GAVA_TCC_CONSUMER_KEY = config('GAVA_TCC_CONSUMER_KEY')
+GAVA_TCC_SECRET_KEY = config('GAVA_TCC_SECRET_KEY')
+GAVA_BASE_URL = config('GAVA_BASE_URL', default='https://sbx.kra.go.ke')
 
 # Production settings
 import os

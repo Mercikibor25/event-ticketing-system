@@ -47,6 +47,11 @@
         </div>
 
         <div class="form-group">
+            <label>National ID Number</label>
+            <input type="text" id="national-id" placeholder="Enter your National ID number">
+         </div>
+         
+        <div class="form-group">
             <label>Password</label>
             <input type="password" id="password" placeholder="Enter password">
         </div>
@@ -76,57 +81,58 @@
         }
     });
 
-    async function registerUser() {
-        const username  = document.getElementById('username').value.trim();
-        const email     = document.getElementById('email').value.trim();
-        const phone     = document.getElementById('phone').value.trim();
-        const password  = document.getElementById('password').value;
-        const password2 = document.getElementById('password2').value;
+async function registerUser() {
+    const username   = document.getElementById('username').value.trim();
+    const email      = document.getElementById('email').value.trim();
+    const phone      = document.getElementById('phone').value.trim();
+    const nationalId = document.getElementById('national-id').value.trim();
+    const password   = document.getElementById('password').value;
+    const password2  = document.getElementById('password2').value;
 
-        // Basic validation
-        if (!username || !email || !phone || !password || !password2) {
-            showAlert('alert-container', 'Please fill in all fields.', 'error');
-            return;
-        }
+    if (!username || !email || !phone || !nationalId || !password || !password2) {
+        showAlert('alert-container', 'Please fill in all fields.', 'error');
+        return;
+    }
 
-        if (password !== password2) {
-            showAlert('alert-container', 'Passwords do not match.', 'error');
-            return;
-        }
+    if (password !== password2) {
+        showAlert('alert-container', 'Passwords do not match.', 'error');
+        return;
+    }
 
-        // Disable button
-        const btn = document.querySelector('.btn-primary');
-        btn.textContent = 'Creating account...';
-        btn.disabled = true;
+    const btn = document.querySelector('.btn-primary');
+    btn.textContent = 'Verifying National ID...';
+    btn.disabled = true;
 
-        try {
-            const response = await api.register({
-                username,
-                email,
-                phone_number: phone,
-                password,
-                password2
-            });
+    try {
+        const response = await api.register({
+            username,
+            email,
+            phone_number: phone,
+            national_id: nationalId,
+            password,
+            password2
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (response.ok) {
-                showAlert('alert-container', 'Account created! Redirecting to login...', 'success');
-                setTimeout(() => window.location.href = 'login.html', 2000);
-            } else {
-                // Show first error from backend
-                const firstError = Object.values(data)[0];
-                showAlert('alert-container', Array.isArray(firstError) ? firstError[0] : firstError, 'error');
-                btn.textContent = 'Create Account';
-                btn.disabled = false;
-            }
-
-        } catch (error) {
-            showAlert('alert-container', 'Could not connect to server. Is it running?', 'error');
+        if (response.ok) {
+            showAlert('alert-container', 
+                'Account created successfully! Redirecting to login...', 'success');
+            setTimeout(() => window.location.href = 'login.html', 2000);
+        } else {
+            const firstError = Object.values(data)[0];
+            showAlert('alert-container', 
+                Array.isArray(firstError) ? firstError[0] : firstError, 'error');
             btn.textContent = 'Create Account';
             btn.disabled = false;
         }
+
+    } catch (error) {
+        showAlert('alert-container', 'Could not connect to server. Is it running?', 'error');
+        btn.textContent = 'Create Account';
+        btn.disabled = false;
     }
+}
 
     // Allow Enter key to submit
     document.addEventListener('keypress', (e) => {
