@@ -122,6 +122,10 @@ GAVA_TCC_CONSUMER_KEY = config('GAVA_TCC_CONSUMER_KEY')
 GAVA_TCC_SECRET_KEY = config('GAVA_TCC_SECRET_KEY')
 GAVA_BASE_URL = config('GAVA_BASE_URL', default='https://sbx.kra.go.ke')
 
+# Africa's Talking SMS Settings
+AFRICASTALKING_USERNAME = config('AFRICASTALKING_USERNAME')
+AFRICASTALKING_API_KEY = config('AFRICASTALKING_API_KEY')
+
 # Production settings
 import os
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

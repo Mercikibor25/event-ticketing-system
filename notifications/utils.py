@@ -1,7 +1,8 @@
 from .models import Notification
+from .africastalking_sms import send_sms
 
 def send_ticket_confirmation(user, ticket):
-    """Log ticket confirmation notification"""
+    """SMS sent after successful ticket booking"""
     message = (
         f"Hello {user.username}! Your ticket has been booked.\n"
         f"Event: {ticket.event.title}\n"
@@ -10,18 +11,24 @@ def send_ticket_confirmation(user, ticket):
         f"Ticket ID: {ticket.ticket_id}\n"
         f"Show this SMS or QR code at the gate."
     )
+
+    # Send SMS
+    if user.phone_number:
+        send_sms(user.phone_number, message)
+
+    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='ticket_confirmation',
         message=message,
         phone_number=user.phone_number,
-        status='pending'
+        status='sent'
     )
-    return {'message': 'Notification logged'}
+    return {'message': 'Notification sent'}
 
 
 def send_payment_confirmation(user, payment):
-    """Log payment confirmation notification"""
+    """SMS sent after successful M-Pesa payment"""
     message = (
         f"Hello {user.username}! Payment confirmed.\n"
         f"Amount: KES {payment.amount}\n"
@@ -29,18 +36,24 @@ def send_payment_confirmation(user, payment):
         f"M-Pesa Receipt: {payment.mpesa_receipt_number}\n"
         f"Thank you!"
     )
+
+    # Send SMS
+    if user.phone_number:
+        send_sms(user.phone_number, message)
+
+    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='payment_confirmation',
         message=message,
         phone_number=user.phone_number,
-        status='pending'
+        status='sent'
     )
-    return {'message': 'Notification logged'}
+    return {'message': 'Notification sent'}
 
 
 def send_event_reminder(user, ticket):
-    """Log event reminder notification"""
+    """SMS reminder sent before the event"""
     message = (
         f"Hello {user.username}! Reminder:\n"
         f"'{ticket.event.title}' is tomorrow!\n"
@@ -49,29 +62,41 @@ def send_event_reminder(user, ticket):
         f"Ticket ID: {ticket.ticket_id}\n"
         f"See you there!"
     )
+
+    # Send SMS
+    if user.phone_number:
+        send_sms(user.phone_number, message)
+
+    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='event_reminder',
         message=message,
         phone_number=user.phone_number,
-        status='pending'
+        status='sent'
     )
-    return {'message': 'Notification logged'}
+    return {'message': 'Notification sent'}
 
 
 def send_event_update(user, event, update_message):
-    """Log event update notification"""
+    """SMS sent when event details change"""
     message = (
         f"Hello {user.username}! Update for '{event.title}':\n"
         f"{update_message}\n"
         f"Date: {event.date.strftime('%d %b %Y %H:%M')}\n"
         f"Venue: {event.venue}"
     )
+
+    # Send SMS
+    if user.phone_number:
+        send_sms(user.phone_number, message)
+
+    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='event_update',
         message=message,
         phone_number=user.phone_number,
-        status='pending'
+        status='sent'
     )
-    return {'message': 'Notification logged'}
+    return {'message': 'Notification sent'}
