@@ -1,22 +1,30 @@
 from .models import Notification
 from .africastalking_sms import send_sms
 
-def send_ticket_confirmation(user, ticket):
+def send_ticket_confirmation(user, ticket, quantity=1, total_amount=None):
     """SMS sent after successful ticket booking"""
-    message = (
-        f"Hello {user.username}! Your ticket has been booked.\n"
-        f"Event: {ticket.event.title}\n"
-        f"Date: {ticket.event.date.strftime('%d %b %Y %H:%M')}\n"
-        f"Venue: {ticket.event.venue}\n"
-        f"Ticket ID: {ticket.ticket_id}\n"
-        f"Show this SMS or QR code at the gate."
-    )
+    if quantity > 1:
+        message = (
+            f"Hello {user.username}! {quantity} tickets booked.\n"
+            f"Event: {ticket.event.title}\n"
+            f"Date: {ticket.event.date.strftime('%d %b %Y %H:%M')}\n"
+            f"Venue: {ticket.event.venue}\n"
+            f"Total Amount: KES {total_amount}\n"
+            f"Show your QR codes at the gate."
+        )
+    else:
+        message = (
+            f"Hello {user.username}! Your ticket has been booked.\n"
+            f"Event: {ticket.event.title}\n"
+            f"Date: {ticket.event.date.strftime('%d %b %Y %H:%M')}\n"
+            f"Venue: {ticket.event.venue}\n"
+            f"Ticket ID: {ticket.ticket_id}\n"
+            f"Show this SMS or QR code at the gate."
+        )
 
-    # Send SMS
     if user.phone_number:
         send_sms(user.phone_number, message)
 
-    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='ticket_confirmation',
@@ -37,11 +45,9 @@ def send_payment_confirmation(user, payment):
         f"Thank you!"
     )
 
-    # Send SMS
     if user.phone_number:
         send_sms(user.phone_number, message)
 
-    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='payment_confirmation',
@@ -63,11 +69,9 @@ def send_event_reminder(user, ticket):
         f"See you there!"
     )
 
-    # Send SMS
     if user.phone_number:
         send_sms(user.phone_number, message)
 
-    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='event_reminder',
@@ -87,11 +91,9 @@ def send_event_update(user, event, update_message):
         f"Venue: {event.venue}"
     )
 
-    # Send SMS
     if user.phone_number:
         send_sms(user.phone_number, message)
 
-    # Log notification
     Notification.objects.create(
         user=user,
         notification_type='event_update',

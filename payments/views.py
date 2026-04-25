@@ -19,15 +19,14 @@ class InitiatePaymentView(APIView):
     def post(self, request):
         ticket_id = request.data.get('ticket_id')
         phone_number = request.data.get('phone_number')
+        custom_amount = request.data.get('amount')
 
-        # Validate inputs
         if not ticket_id or not phone_number:
             return Response(
                 {'error': 'ticket_id and phone_number are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get ticket
         try:
             ticket = Ticket.objects.get(id=ticket_id, user=request.user)
         except Ticket.DoesNotExist:
@@ -36,25 +35,32 @@ class InitiatePaymentView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Check if already paid
-        if Payment.objects.filter(ticket=ticket, status='completed').exists():
-            return Response(
-                {'error': 'This ticket has already been paid for.'},
-                status=status.HTTP_400_BAD_REQUEST
+        # Use custom amount if provided otherwise use ticket price
+        amount = custom_amount if custom_amount else ticket.event.ticket_price
+
+        # Check if payment already exists for this ticket
+        existing_payment = Payment.objects.filter(ticket=ticket).first()
+
+        if existing_payment:
+            if existing_payment.status == 'completed':
+                return Response(
+                    {'error': 'This ticket has already been paid for.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            payment = existing_payment
+            payment.phone_number = phone_number
+            payment.amount = amount
+            payment.status = 'pending'
+            payment.save()
+        else:
+            payment = Payment.objects.create(
+                user=request.user,
+                ticket=ticket,
+                amount=amount,
+                phone_number=phone_number,
+                status='pending'
             )
 
-        amount = ticket.event.ticket_price
-
-        # Create pending payment record
-        payment = Payment.objects.create(
-            user=request.user,
-            ticket=ticket,
-            amount=amount,
-            phone_number=phone_number,
-            status='pending'
-        )
-
-        # Initiate STK Push
         response = stk_push(
             phone_number=phone_number,
             amount=amount,

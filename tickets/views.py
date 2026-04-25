@@ -1,6 +1,3 @@
-from django.shortcuts import render
-
-# Create your views here.
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -8,13 +5,13 @@ from .models import Ticket
 from .serializers import TicketSerializer
 from .utils import generate_qr_code
 from events.models import Event
-from notifications.utils import send_ticket_confirmation
 
 class BookTicketView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         event_id = request.data.get('event_id')
+        quantity = int(request.data.get('quantity', 1))
 
         # Check event exists
         try:
@@ -28,41 +25,59 @@ class BookTicketView(APIView):
         # Check tickets are available
         if event.available_tickets <= 0:
             return Response(
-                {'error': 'Sorry, this event is sold out.'},
+                {'error': 'Sorry this event is sold out.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check user hasn't already booked this event
-        if Ticket.objects.filter(user=request.user, event=event, status='active').exists():
+        # Check enough tickets available for requested quantity
+        if event.available_tickets < quantity:
             return Response(
-                {'error': 'You have already booked a ticket for this event.'},
+                {'error': f'Only {event.available_tickets} tickets available.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create ticket
-        ticket = Ticket.objects.create(user=request.user, event=event)
+        # Check quantity is valid
+        if quantity < 1 or quantity > 10:
+            return Response(
+                {'error': 'You can book between 1 and 10 tickets at a time.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Calculate total amount
+        total_amount = event.ticket_price * quantity
+
+        # Create tickets
+        tickets = []
+        for i in range(quantity):
+            ticket = Ticket.objects.create(
+                user=request.user,
+                event=event
+            )
+            # Generate QR code for each ticket
+            generate_qr_code(ticket)
+            tickets.append(ticket)
 
         # Reduce available tickets
-        event.available_tickets -= 1
+        event.available_tickets -= quantity
         event.save()
 
-        # Generate QR code
-        generate_qr_code(ticket)
-        
-        
-        send_ticket_confirmation(request.user, ticket)
+        # Send one SMS for all tickets booked
+        from notifications.utils import send_ticket_confirmation
+        send_ticket_confirmation(request.user, tickets[0], quantity, total_amount)
 
-        serializer = TicketSerializer(ticket)
+        serializer = TicketSerializer(tickets, many=True)
         return Response(
             {
-                'message': 'Ticket booked successfully!',
-                'ticket': serializer.data
+                'message': f'{quantity} ticket(s) booked successfully!',
+                'tickets': serializer.data,
+                'total_amount': str(total_amount),
+                'quantity': quantity
             },
             status=status.HTTP_201_CREATED
         )
-    
+
+
 class MyTicketsView(generics.ListAPIView):
-    """List all tickets for the logged in user"""
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -70,7 +85,6 @@ class MyTicketsView(generics.ListAPIView):
         return Ticket.objects.filter(user=self.request.user)
 
 class TicketDetailView(generics.RetrieveAPIView):
-    """View a single ticket"""
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
 
