@@ -93,7 +93,10 @@
         const container = document.getElementById('event-container');
 
         if (!eventId) {
-            container.innerHTML = `<div class="empty-state"><h3>Event not found</h3></div>`;
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>Event not found</h3>
+                </div>`;
             return;
         }
 
@@ -112,7 +115,9 @@
                         <div style="display:flex; justify-content:space-between;
                                     align-items:start; margin-bottom:1rem;">
                             <h2 style="font-size:1.6rem;">${event.title}</h2>
-                            <span class="badge badge-${event.status}">${event.status}</span>
+                            <span class="badge badge-${event.status}">
+                                ${event.status}
+                            </span>
                         </div>
 
                         <p style="color:var(--text-light); margin-bottom:1.5rem;
@@ -171,7 +176,7 @@
                 </div>
             `;
 
-            currentEventPrice = event.ticket_price;
+            currentEventPrice = parseFloat(event.ticket_price);
 
         } catch (error) {
             container.innerHTML = `
@@ -184,7 +189,9 @@
 
     function getBookingButton(event) {
         if (event.is_sold_out) {
-            return `<button class="btn btn-danger btn-full" disabled>Sold Out</button>`;
+            return `<button class="btn btn-danger btn-full" disabled>
+                        Sold Out
+                    </button>`;
         }
         if (!isLoggedIn()) {
             return `<a href="login.html" class="btn btn-primary btn-full">
@@ -213,22 +220,24 @@
                     Total: KES ${event.ticket_price}
                 </p>
             </div>
-            <button class="btn btn-success btn-full"
-                onclick="bookTicket(${event.id})">
+            <button id="book-btn" class="btn btn-success btn-full"
+                onclick="bookTicket(${event.id}, ${event.ticket_price})">
                 🎟 Book Ticket — KES ${event.ticket_price} each
             </button>`;
     }
 
     function updateTotal(price) {
-        const quantity = document.getElementById('ticket-quantity').value;
+        const quantity = parseInt(document.getElementById('ticket-quantity').value);
         const total = price * quantity;
         document.getElementById('total-amount').textContent =
             `Total: KES ${total}`;
     }
 
-    async function bookTicket(eventId) {
+    async function bookTicket(eventId, ticketPrice) {
         const quantity = parseInt(document.getElementById('ticket-quantity').value);
-        const btn = document.querySelector('.btn-success');
+        const totalAmount = ticketPrice * quantity;
+
+        const btn = document.getElementById('book-btn');
         btn.textContent = 'Booking...';
         btn.disabled = true;
 
@@ -248,33 +257,37 @@
             const data = await response.json();
 
             if (response.ok) {
+                // Store values for payment
                 currentTicketId = data.tickets[0].id;
                 currentQuantity = quantity;
-                currentTotalAmount = data.total_amount;
+                currentTotalAmount = parseFloat(data.total_amount) || totalAmount;
 
                 showAlert('alert-container',
-                    `${quantity} ticket(s) booked! Complete payment below.`,
+                    `${quantity} ticket(s) booked successfully! Complete payment below.`,
                     'success');
+
                 openModal();
-                btn.textContent = `✓ ${quantity} Ticket(s) Booked — Pay Now`;
+                btn.textContent = `✓ ${quantity} Ticket(s) Booked`;
 
             } else {
                 const error = data.error || 'Could not book ticket.';
                 showAlert('alert-container', error, 'error');
-                btn.textContent = `🎟 Book Ticket — KES ${currentEventPrice} each`;
+                btn.textContent = `🎟 Book Ticket — KES ${ticketPrice} each`;
                 btn.disabled = false;
             }
 
         } catch (error) {
             showAlert('alert-container', 'Server error. Try again.', 'error');
-            btn.textContent = `🎟 Book Ticket — KES ${currentEventPrice} each`;
+            btn.textContent = `🎟 Book Ticket — KES ${ticketPrice} each`;
             btn.disabled = false;
         }
     }
 
     function openModal() {
+        const displayAmount = currentTotalAmount || currentEventPrice;
+        const displayQuantity = currentQuantity || 1;
         document.getElementById('modal-amount').textContent =
-            `Total amount to pay: KES ${currentTotalAmount} for ${currentQuantity} ticket(s)`;
+            `Total amount: KES ${displayAmount} for ${displayQuantity} ticket(s)`;
         document.getElementById('payment-modal').style.display = 'flex';
     }
 
@@ -295,10 +308,17 @@
         btn.disabled = true;
 
         try {
-            const response = await api.initiatePayment({
-                ticket_id: currentTicketId,
-                phone_number: phone,
-                amount: currentTotalAmount
+            const response = await fetch(`${API_BASE}/payments/initiate/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                    ticket_id: currentTicketId,
+                    phone_number: phone,
+                    amount: currentTotalAmount
+                })
             });
 
             const data = await response.json();

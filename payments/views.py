@@ -38,7 +38,7 @@ class InitiatePaymentView(APIView):
         # Use custom amount if provided otherwise use ticket price
         amount = custom_amount if custom_amount else ticket.event.ticket_price
 
-        # Check if payment already exists for this ticket
+        # Check if payment already exists
         existing_payment = Payment.objects.filter(ticket=ticket).first()
 
         if existing_payment:
