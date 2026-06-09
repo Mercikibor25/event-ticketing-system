@@ -46,6 +46,11 @@
             <p style="color:var(--text-light); font-size:0.85rem;">Total Tickets Sold</p>
             <h3 id="stat-tickets" style="font-size:2rem; color:var(--accent);">...</h3>
         </div>
+        <div style="background:white; padding:1.5rem; border-radius:10px;
+                    box-shadow:var(--shadow); border-left:4px solid var(--primary);">
+            <p style="color:var(--text-light); font-size:0.85rem;">Total Revenue</p>
+            <h3 id="stat-revenue" style="font-size:1.5rem; color:var(--primary);">...</h3>
+        </div>
     </div>
 
     <!-- TWO COLUMN LAYOUT -->
@@ -82,8 +87,9 @@
                 <label>Total Capacity</label>
                 <input type="number" id="ev-capacity" placeholder="e.g. 200">
             </div>
-            <button id="create-event-btn" class="btn btn-primary btn-full" onclick="submitCreateEvent()">
-                 Create Event
+            <button id="create-event-btn" class="btn btn-primary btn-full"
+                onclick="submitCreateEvent()">
+                Create Event
             </button>
         </div>
 
@@ -136,7 +142,15 @@
     <!-- EVENTS LIST -->
     <div style="background:white; padding:2rem; border-radius:10px;
                 box-shadow:var(--shadow); margin-top:2rem;">
-        <h3 style="margin-bottom:1.5rem; font-size:1.2rem;">All Events</h3>
+
+        <div style="display:flex; justify-content:space-between;
+                    align-items:center; margin-bottom:1rem;">
+            <h3 style="font-size:1.2rem;">All Events</h3>
+            <button class="btn btn-outline" onclick="exportCSV()">
+                📥 Export to CSV
+            </button>
+        </div>
+
         <div id="admin-events-list">
             <div class="loading">Loading events...</div>
         </div>
@@ -149,7 +163,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         updateNav();
 
-        // Redirect if not logged in or not admin
         if (!isLoggedIn()) {
             window.location.href = 'login.html';
             return;
@@ -179,6 +192,11 @@
                 sum + (e.total_capacity - e.available_tickets), 0);
             document.getElementById('stat-tickets').textContent = totalSold;
 
+            const totalRevenue = events.reduce((sum, e) =>
+                sum + ((e.total_capacity - e.available_tickets) * e.ticket_price), 0);
+            document.getElementById('stat-revenue').textContent =
+                `KES ${totalRevenue.toLocaleString()}`;
+
             // Populate SMS dropdown
             const select = document.getElementById('sms-event');
             select.innerHTML = events.map(e =>
@@ -194,6 +212,7 @@
             }
 
             list.innerHTML = `
+                <div style="overflow-x:auto;">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr style="border-bottom:2px solid var(--border);
@@ -207,13 +226,20 @@
                             <th style="padding:0.8rem; font-size:0.85rem;
                                        color:var(--text-light);">PRICE</th>
                             <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">TICKETS SOLD</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
                                        color:var(--text-light);">TICKETS LEFT</th>
+                            <th style="padding:0.8rem; font-size:0.85rem;
+                                       color:var(--text-light);">REVENUE</th>
                             <th style="padding:0.8rem; font-size:0.85rem;
                                        color:var(--text-light);">STATUS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${events.map(e => `
+                        ${events.map(e => {
+                            const sold = e.total_capacity - e.available_tickets;
+                            const revenue = sold * e.ticket_price;
+                            return `
                             <tr style="border-bottom:1px solid var(--border);">
                                 <td style="padding:0.8rem; font-weight:500;">
                                     ${e.title}</td>
@@ -226,17 +252,24 @@
                                 <td style="padding:0.8rem; font-weight:600;
                                            color:var(--primary);">
                                     KES ${e.ticket_price}</td>
+                                <td style="padding:0.8rem; font-weight:600;
+                                           color:var(--accent);">
+                                    ${sold}</td>
                                 <td style="padding:0.8rem;">
                                     ${e.available_tickets}</td>
+                                <td style="padding:0.8rem; font-weight:600;
+                                           color:var(--primary);">
+                                    KES ${revenue.toLocaleString()}</td>
                                 <td style="padding:0.8rem;">
                                     <span class="badge badge-${e.status}">
                                         ${e.status}
                                     </span>
                                 </td>
-                            </tr>
-                        `).join('')}
+                            </tr>`;
+                        }).join('')}
                     </tbody>
-                </table>`;
+                </table>
+                </div>`;
 
         } catch (error) {
             showAlert('alert-container', 'Could not load events.', 'error');
@@ -256,7 +289,7 @@
             return;
         }
 
-        const btn = document.querySelector('.btn-primary');
+        const btn = document.getElementById('create-event-btn');
         btn.textContent = 'Creating...';
         btn.disabled = true;
 
@@ -272,7 +305,6 @@
 
             if (response.ok) {
                 showAlert('event-form-alert', 'Event created successfully!', 'success');
-                // Clear form
                 ['ev-title','ev-desc','ev-venue','ev-date',
                  'ev-price','ev-capacity'].forEach(id => {
                     document.getElementById(id).value = '';
@@ -341,7 +373,7 @@
         btn.disabled = true;
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/tickets/validate/', {
+            const response = await fetch(`${API_BASE}/tickets/validate/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -368,6 +400,38 @@
 
         btn.textContent = 'Validate Ticket';
         btn.disabled = false;
+    }
+
+    async function exportCSV() {
+        try {
+            const response = await api.getEvents();
+            const events = await response.json();
+
+            let csv = 'Event Title,Date,Venue,Ticket Price,Capacity,Tickets Sold,Tickets Left,Revenue,Status\n';
+
+            events.forEach(e => {
+                const sold = e.total_capacity - e.available_tickets;
+                const revenue = sold * e.ticket_price;
+                csv += `"${e.title}","${formatDate(e.date)}","${e.venue}",`;
+                csv += `"KES ${e.ticket_price}","${e.total_capacity}",`;
+                csv += `"${sold}","${e.available_tickets}",`;
+                csv += `"KES ${revenue}","${e.status}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'EventBook_Report.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            showAlert('alert-container',
+                'Report downloaded successfully!', 'success');
+
+        } catch (error) {
+            showAlert('alert-container', 'Could not generate report.', 'error');
+        }
     }
 
     function formatDate(dateStr) {

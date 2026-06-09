@@ -10,7 +10,7 @@
 
 <!-- NAVBAR -->
 <nav>
-    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <a href="index.html" class="nav-brand"> EventBook</a>
     <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
         <li><a href="my-tickets.html">My Tickets</a></li>
@@ -105,8 +105,8 @@
                 <div class="ticket-card">
                     <div style="flex:1;">
                         <h3>${ticket.event_title}</h3>
-                        <p>📅 ${formatDate(ticket.event_date)}</p>
-                        <p>📍 ${ticket.event_venue}</p>
+                        <p> ${formatDate(ticket.event_date)}</p>
+                        <p> ${ticket.event_venue}</p>
                         <p>
                             Status:
                             <span class="badge ${getStatusBadge(ticket.status)}">

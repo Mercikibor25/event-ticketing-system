@@ -1,5 +1,4 @@
 import qrcode
-import os
 from django.conf import settings
 from io import BytesIO
 from django.core.files import File

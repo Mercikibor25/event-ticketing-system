@@ -1,4 +1,4 @@
-const API_BASE = 'https://event-ticketing-system-production.up.railway.app/api';
+const API_BASE = 'http://127.0.0.1:8000/api';
 
 // Token helpers
 const getToken = () => localStorage.getItem('access_token');

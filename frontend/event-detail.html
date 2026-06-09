@@ -10,7 +10,7 @@
 
 <!-- NAVBAR -->
 <nav>
-    <a href="index.html" class="nav-brand">🎟 EventBook</a>
+    <a href="index.html" class="nav-brand"> EventBook</a>
     <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
         <li><a href="my-tickets.html">My Tickets</a></li>
@@ -36,9 +36,9 @@
 
 <!-- PAYMENT MODAL -->
 <div id="payment-modal" style="display:none; position:fixed; top:0; left:0;
-     width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200;
+     width:100%; height:100%; background:rgba(0, 0, 0, 0.5); z-index:200;
      justify-content:center; align-items:center;">
-    <div style="background:white; border-radius:12px; padding:2rem;
+    <div style="background:rgb(255, 255, 255); border-radius:12px; padding:2rem;
                 width:90%; max-width:400px;">
         <h3 style="margin-bottom:1rem;">Complete Payment</h3>
         <div id="modal-alert"></div>
@@ -56,7 +56,7 @@
                 Pay Now
             </button>
             <button class="btn btn-outline" style="flex:1" onclick="closeModal()">
-                Cancel
+                Pay Later
             </button>
         </div>
     </div>
@@ -133,7 +133,7 @@
                                     DATE & TIME
                                 </p>
                                 <p style="font-weight:600; margin-top:0.3rem;">
-                                    📅 ${formatDate(event.date)}
+                                     ${formatDate(event.date)}
                                 </p>
                             </div>
                             <div style="background:var(--secondary); padding:1rem;
@@ -142,7 +142,7 @@
                                     VENUE
                                 </p>
                                 <p style="font-weight:600; margin-top:0.3rem;">
-                                    📍 ${event.venue}
+                                     ${event.venue}
                                 </p>
                             </div>
                             <div style="background:var(--secondary); padding:1rem;
@@ -152,7 +152,7 @@
                                 </p>
                                 <p style="font-weight:600; margin-top:0.3rem;
                                           color:var(--primary);">
-                                    💰 KES ${event.ticket_price} per ticket
+                                     KES ${event.ticket_price} per ticket
                                 </p>
                             </div>
                             <div style="background:var(--secondary); padding:1rem;
@@ -161,7 +161,7 @@
                                     AVAILABLE TICKETS
                                 </p>
                                 <p style="font-weight:600; margin-top:0.3rem;">
-                                    🎟 ${event.available_tickets} left
+                                     ${event.available_tickets} left
                                 </p>
                             </div>
                         </div>
@@ -222,7 +222,7 @@
             </div>
             <button id="book-btn" class="btn btn-success btn-full"
                 onclick="bookTicket(${event.id}, ${event.ticket_price})">
-                🎟 Book Ticket — KES ${event.ticket_price} each
+                 Book Ticket — KES ${event.ticket_price} each
             </button>`;
     }
 
@@ -267,18 +267,18 @@
                     'success');
 
                 openModal();
-                btn.textContent = `✓ ${quantity} Ticket(s) Booked`;
+                btn.textContent = ` ${quantity} Ticket(s) Booked`;
 
             } else {
                 const error = data.error || 'Could not book ticket.';
                 showAlert('alert-container', error, 'error');
-                btn.textContent = `🎟 Book Ticket — KES ${ticketPrice} each`;
+                btn.textContent = ` Book Ticket — KES ${ticketPrice} each`;
                 btn.disabled = false;
             }
 
         } catch (error) {
             showAlert('alert-container', 'Server error. Try again.', 'error');
-            btn.textContent = `🎟 Book Ticket — KES ${ticketPrice} each`;
+            btn.textContent = ` Book Ticket — KES ${ticketPrice} each`;
             btn.disabled = false;
         }
     }
