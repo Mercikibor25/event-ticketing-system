@@ -1,6 +1,4 @@
-from django.shortcuts import render
-
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, parsers
 from rest_framework.exceptions import PermissionDenied
 from .models import Event
 from .serializers import EventSerializer
@@ -10,22 +8,30 @@ class IsAdminUser(permissions.BasePermission):
         return request.user.is_authenticated and request.user.role == 'admin'
 
 class EventListView(generics.ListAPIView):
-    """Anyone can view events"""
     queryset = Event.objects.filter(status__in=['upcoming', 'ongoing'])
     serializer_class = EventSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 class EventDetailView(generics.RetrieveAPIView):
-    """Anyone can view a single event"""
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 class EventCreateView(generics.CreateAPIView):
-    """Only admin users can create events"""
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def perform_create(self, serializer):
         serializer.save(
@@ -33,8 +39,13 @@ class EventCreateView(generics.CreateAPIView):
             available_tickets=serializer.validated_data['total_capacity']
         )
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 class EventUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
-    """Only admin users can edit or delete events"""
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
