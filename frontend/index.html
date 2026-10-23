@@ -30,10 +30,19 @@
     </ul>
 </nav>
 
-<!-- HERO -->
-<div class="hero">
-    <h1>Find & Book Events in Kenya</h1>
-    <p>Secure tickets, real-time M-Pesa payments and instant SMS confirmation</p>
+<!-- HERO WITH SLIDESHOW -->
+<div class="hero" id="hero">
+    <div class="hero-slides" id="hero-slides"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1>Find & Book Events in Kenya</h1>
+        <p>Secure tickets, real-time M-Pesa payments and instant SMS confirmation</p>
+        <div class="hero-search">
+            <input type="text" id="search-input" placeholder="Search events...">
+            <button onclick="searchEvents()">Search</button>
+        </div>
+    </div>
+    <div class="hero-dots" id="hero-dots"></div>
 </div>
 
 <!-- EVENTS SECTION -->
@@ -53,30 +62,62 @@
 </div>
 
 <script src="js/api.js"></script>
+```html
 <script>
-    // Run on page load
+    let currentSlide = 0;
+    let slideInterval = null;
+    let eventImages = [];
+
+    // Run when the page loads
     document.addEventListener('DOMContentLoaded', () => {
         updateNav();
         showAdminLink();
         loadEvents();
+
+        const searchInput = document.getElementById('search-input');
+
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchEvents();
+                }
+            });
+        }
     });
 
-    // Show admin link if user is admin
+    // Show admin link if user is an admin
     function showAdminLink() {
         const user = getUser();
         const adminLink = document.getElementById('nav-admin');
-        if (adminLink && user.role === 'admin') {
+
+        if (adminLink && user && user.role === 'admin') {
             adminLink.style.display = 'inline-block';
         }
     }
 
-    // Load and display all events
+    // Load events and display them
     async function loadEvents() {
         const container = document.getElementById('events-container');
 
         try {
             const response = await api.getEvents();
+
+            if (!response.ok) {
+                throw new Error('Failed to load events');
+            }
+
             const events = await response.json();
+
+            // Collect event images for the slideshow
+            eventImages = events
+                .filter(event => event.image_url)
+                .map(event => ({
+                    url: event.image_url,
+                    title: event.title
+                }));
+
+            // Initialize the slideshow
+            initSlideshow(eventImages);
 
             if (events.length === 0) {
                 container.innerHTML = `
@@ -87,35 +128,47 @@
                 return;
             }
 
+            // Display event cards
             container.innerHTML = events.map(event => `
                 <div class="card">
                     ${event.image_url
-                        ? `<div style="height:180px; overflow:hidden;">
-                            <img src="${event.image_url}" alt="${event.title}"
-                                style="width:100%; height:100%; object-fit:cover;">
-                            </div>`
-                       : `<div style="height:180px; background:linear-gradient(135deg, var(--primary), var(--primary-dark));
-                                        display:flex; align-items:center; justify-content:center;">
-                            <span style="font-size:3rem;">🎟</span>
-                            </div>`
-                }
+                        ? `<div style="height:200px; overflow:hidden;">
+                            <img src="${event.image_url}"
+                                 alt="${event.title}"
+                                 style="width:100%; height:100%; object-fit:cover;
+                                        transition:transform 0.3s;"
+                                 onmouseover="this.style.transform='scale(1.05)'"
+                                 onmouseout="this.style.transform='scale(1)'">
+                           </div>`
+                        : `<div style="height:200px;
+                                      background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+                                      display:flex; align-items:center; justify-content:center;">
+                            <span style="font-size:4rem;">🎟</span>
+                           </div>`
+                    }
+
                     <div class="card-body">
-                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:0.5rem;">
+                        <div style="display:flex; justify-content:space-between;
+                                    align-items:start; margin-bottom:0.5rem;">
                             <h3 class="card-title">${event.title}</h3>
                             <span class="badge badge-${event.status}">
                                 ${event.status}
                             </span>
                         </div>
-                        <p class="card-text"> ${event.venue}</p>
-                        <p class="card-text"> ${formatDate(event.date)}</p>
-                        <p class="card-text"> ${event.available_tickets} tickets left</p>
+
+                        <p class="card-text">📍 ${event.venue}</p>
+                        <p class="card-text">📅 ${formatDate(event.date)}</p>
+                        <p class="card-text">🎟 ${event.available_tickets} tickets left</p>
                         <p class="card-price">KES ${event.ticket_price}</p>
                     </div>
+
                     <div class="card-footer">
                         ${event.is_sold_out
                             ? `<span class="badge badge-sold-out">Sold Out</span>`
-                            : `<a href="event-detail.html?id=${event.id}" class="btn btn-primary">View & Book</a>`
+                            : `<a href="event-detail.html?id=${event.id}"
+                                  class="btn btn-primary">View & Book</a>`
                         }
+
                         <span style="font-size:0.8rem; color:var(--text-light);">
                             by ${event.organizer_name}
                         </span>
@@ -124,14 +177,144 @@
             `).join('');
 
         } catch (error) {
+            console.error('Error loading events:', error);
+
             container.innerHTML = `
                 <div class="empty-state">
                     <h3>Could not load events</h3>
-                    <p>Make sure the server is running</p>
+                    <p>Make sure the server is running and try again.</p>
                 </div>`;
         }
     }
 
+    // Initialize the hero slideshow
+    function initSlideshow(images) {
+        const slidesContainer = document.getElementById('hero-slides');
+        const dotsContainer = document.getElementById('hero-dots');
+
+        if (!slidesContainer || !dotsContainer) return;
+
+        const slides = images.length > 0 ? images : [
+            {
+                url: null,
+                title: 'EventBook Kenya',
+                gradient: 'linear-gradient(135deg, #6C3CE1, #9B6DFF)'
+            },
+            {
+                url: null,
+                title: 'Book Tickets',
+                gradient: 'linear-gradient(135deg, #FF6B35, #F7C59F)'
+            },
+            {
+                url: null,
+                title: 'Pay with M-Pesa',
+                gradient: 'linear-gradient(135deg, #10B981, #6EE7B7)'
+            }
+        ];
+
+        currentSlide = 0;
+
+        // Create slideshow backgrounds
+        slidesContainer.innerHTML = slides.map((slide, index) => `
+            <div class="hero-slide ${index === 0 ? 'active' : ''}"
+                 style="${slide.url
+                     ? `background-image:url('${slide.url}')`
+                     : `background:${slide.gradient}`
+                 }">
+            </div>
+        `).join('');
+
+        // Create slideshow dots
+        dotsContainer.innerHTML = slides.map((slide, index) => `
+            <div class="hero-dot ${index === 0 ? 'active' : ''}"
+                 onclick="goToSlide(${index})"
+                 role="button"
+                 tabindex="0"
+                 aria-label="Go to slide ${index + 1}">
+            </div>
+        `).join('');
+
+        // Automatically change slides every 4 seconds
+        if (slideInterval) {
+            clearInterval(slideInterval);
+        }
+
+        slideInterval = setInterval(() => {
+            nextSlide(slides.length);
+        }, 4000);
+    }
+
+    // Move to the next slide
+    function nextSlide(total) {
+        if (total === 0) return;
+
+        currentSlide = (currentSlide + 1) % total;
+        updateSlide();
+    }
+
+    // Go to a selected slide
+    function goToSlide(index) {
+        const total = document.querySelectorAll('.hero-slide').length;
+
+        if (total === 0 || index < 0 || index >= total) return;
+
+        currentSlide = index;
+        updateSlide();
+
+        if (slideInterval) {
+            clearInterval(slideInterval);
+        }
+
+        slideInterval = setInterval(() => {
+            nextSlide(total);
+        }, 4000);
+    }
+
+    // Update the active slide and dot
+    function updateSlide() {
+        const slides = document.querySelectorAll('.hero-slide');
+        const dots = document.querySelectorAll('.hero-dot');
+
+        slides.forEach((slide, index) => {
+            slide.classList.toggle('active', index === currentSlide);
+        });
+
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+    }
+
+    // Search event titles
+    function searchEvents() {
+        const searchInput = document.getElementById('search-input');
+        const query = searchInput.value.trim().toLowerCase();
+        const cards = document.querySelectorAll('#events-container .card');
+
+        cards.forEach(card => {
+            const title = card.querySelector('.card-title');
+
+            if (title) {
+                const text = title.textContent.toLowerCase();
+                card.style.display = text.includes(query) ? '' : 'none';
+            }
+        });
+    }
+
+    // Format event dates
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+
+        return date.toLocaleDateString('en-KE', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+</script>
+```
     // Format date nicely
     function formatDate(dateStr) {
         const date = new Date(dateStr);
